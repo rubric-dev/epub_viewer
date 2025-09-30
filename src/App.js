@@ -26,6 +26,9 @@ function App() {
     manifestRef.current = manifest;
   }, [manifest]);
 
+  const loadPageRef = useRef(() => {});
+  loadPageRef.current = (idx) => loadPage(idx);
+
   useEffect(() => {
     const opfUrl =
       "https://files-kids-english.s3.ap-northeast-2.amazonaws.com/books/urn%3Auuid%3Apublishing-3e1d27df/epub/OEBPS/content.opf";
@@ -44,7 +47,7 @@ function App() {
 
         Promise.all([leftBook.ready, rightBook.ready]).then(() => {
           console.log("Spine lengths:", leftBook.spine.items.length, rightBook.spine.items.length);
-          setTimeout(() => loadPage(0), 0);
+          setTimeout(() => loadPageRef.current(0), 0);
         });
       });
   }, []);
@@ -253,10 +256,11 @@ function App() {
     // 페이지 전환 시 오디오 정지
     stopCurrentAudio();
     if (!leftBookRef.current || !rightBookRef.current) return;
-    const spineLen = leftBookRef.current.spine.items.length;
+    const spineLen = (leftBookRef.current.spine && Array.isArray(leftBookRef.current.spine.items)) ? leftBookRef.current.spine.items.length : 0;
+    if (!Number.isFinite(spineLen) || spineLen <= 0) return;
     // 첫 페이지를 우측(recto)에만 표시하는 특수 케이스
     if (dualMode && index === 0) {
-      const rightHrefOnly = rightBookRef.current.spine.items[0]?.href;
+      const rightHrefOnly = (rightBookRef.current.spine && Array.isArray(rightBookRef.current.spine.items) && rightBookRef.current.spine.items[0]) ? rightBookRef.current.spine.items[0].href : undefined;
       const options = {
         width: "100%",
         height: "100%",
@@ -276,8 +280,10 @@ function App() {
         }
       } catch {}
       // 우측 렌더러 준비 및 표시
-      if (!rightRenditionRef.current) {
-        rightRenditionRef.current = rightBookRef.current.renderTo(rightViewerRef.current, options);
+      if (rightViewerRef.current && !rightRenditionRef.current) {
+        try {
+          rightRenditionRef.current = rightBookRef.current.renderTo(rightViewerRef.current, options);
+        } catch {}
         try {
           rightRenditionRef.current.themes.select("override");
         } catch {}
@@ -286,11 +292,11 @@ function App() {
           injectReset(iframe, "right");
         });
       }
-      if (rightHrefOnly) {
+      if (rightHrefOnly && rightRenditionRef.current) {
         rightRenditionRef.current.display(rightHrefOnly).catch(() => {});
       }
       // 오버레이 즉시 준비 (rendered 미호출 대비)
-      ensureClickCatcher(rightViewerRef.current, "right", () => 0);
+      if (rightViewerRef.current) ensureClickCatcher(rightViewerRef.current, "right", () => 0);
       leftCurrentIndexRef.current = null;
       rightCurrentIndexRef.current = 0;
       try {
@@ -314,9 +320,9 @@ function App() {
       leftIndex = Math.max(0, Math.min(index, spineLen - 1));
     }
 
-    const leftHref = leftBookRef.current.spine.items[leftIndex]?.href;
-    let rightHref = dualMode && leftIndex + 1 < spineLen
-      ? rightBookRef.current.spine.items[leftIndex + 1]?.href
+    const leftHref = (leftBookRef.current.spine && leftBookRef.current.spine.items[leftIndex]) ? leftBookRef.current.spine.items[leftIndex].href : undefined;
+    let rightHref = (dualMode && leftIndex + 1 < spineLen && rightBookRef.current.spine && rightBookRef.current.spine.items[leftIndex + 1])
+      ? rightBookRef.current.spine.items[leftIndex + 1].href
       : undefined;
 
     // 마지막 페이지가 홀수(왼쪽 단독)로 끝나는 경우 처리: 우측 비우기
@@ -351,8 +357,10 @@ function App() {
       minSpreadWidth: 0,
     };
 
-    if (!leftRenditionRef.current) {
-      leftRenditionRef.current = leftBookRef.current.renderTo(leftViewerRef.current, options);
+    if (!leftRenditionRef.current && leftViewerRef.current) {
+      try {
+        leftRenditionRef.current = leftBookRef.current.renderTo(leftViewerRef.current, options);
+      } catch {}
       try {
         leftRenditionRef.current.themes.register("override", {
           "@page": {
@@ -411,8 +419,10 @@ function App() {
         } catch {}
       });
     }
-    if (!rightRenditionRef.current) {
-      rightRenditionRef.current = rightBookRef.current.renderTo(rightViewerRef.current, options);
+    if (dualMode && rightViewerRef.current && !rightRenditionRef.current) {
+      try {
+        rightRenditionRef.current = rightBookRef.current.renderTo(rightViewerRef.current, options);
+      } catch {}
       try {
         rightRenditionRef.current.themes.register("override", {
           "@page": {
@@ -463,11 +473,13 @@ function App() {
         const iframe = rightViewerRef.current?.querySelector("iframe");
         injectReset(iframe, "right");
         try { if (iframe) iframe.style.pointerEvents = "none"; } catch {}
-        ensureClickCatcher(rightViewerRef.current, "right", () => {
-          let idx = rightCurrentIndexRef.current ?? section.index;
-          if (!Number.isFinite(idx) && leftCurrentIndexRef.current != null) idx = leftCurrentIndexRef.current + 1;
-          return idx;
-        });
+        if (rightViewerRef.current) {
+          ensureClickCatcher(rightViewerRef.current, "right", () => {
+            let idx = rightCurrentIndexRef.current ?? section.index;
+            if (!Number.isFinite(idx) && leftCurrentIndexRef.current != null) idx = leftCurrentIndexRef.current + 1;
+            return idx;
+          });
+        }
         try {
           if (!iframe) return;
           const doc = iframe.contentDocument || iframe.contentWindow.document;
@@ -478,24 +490,27 @@ function App() {
           });
         } catch {}
       });
+    } else if ((!dualMode || !rightViewerRef.current) && rightRenditionRef.current) {
+      try { rightRenditionRef.current.destroy(); } catch {}
+      rightRenditionRef.current = null;
     }
 
     const tasks = [];
-    if (leftHref) {
+    if (leftHref && leftRenditionRef.current) {
       try { console.log("[display:left] href=", leftHref); } catch {}
       tasks.push(leftRenditionRef.current.display(leftHref));
     }
-    if (rightHref) {
+    if (rightHref && rightRenditionRef.current) {
       try { console.log("[display:right] href=", rightHref); } catch {}
       tasks.push(rightRenditionRef.current.display(rightHref));
     }
     // 우측이 비어야 하는 경우, 오버레이/포인터만 유지하여 클릭 재생만 가능하도록
-    if (!rightHref && dualMode) {
+    if (!rightHref && dualMode && rightViewerRef.current) {
       ensureClickCatcher(rightViewerRef.current, "right", () => null);
     }
     // 오버레이 즉시 준비 (rendered 미호출 대비)
     ensureClickCatcher(leftViewerRef.current, "left", () => leftCurrentIndexRef.current ?? leftIndex);
-    if (rightHref) {
+    if (rightHref && dualMode && rightViewerRef.current) {
       ensureClickCatcher(rightViewerRef.current, "right", () => {
         const ri = rightCurrentIndexRef.current != null ? rightCurrentIndexRef.current : (leftCurrentIndexRef.current != null ? leftCurrentIndexRef.current + 1 : leftIndex + 1);
         return ri;
@@ -690,9 +705,8 @@ function App() {
           background: "black",
           borderTop: "2px solid #ddd",
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
           justifyContent: "center",
+          alignItems: "center",
           gap: "16px",
         }}
       >
