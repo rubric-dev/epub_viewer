@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import ePub from "epubjs";
 
+import LogoSrc from "./logo.png";
+
 function App() {
   const spreadContainerRef = useRef(null);
   const leftViewerRef = useRef(null);
@@ -313,9 +315,21 @@ function App() {
     }
 
     const leftHref = leftBookRef.current.spine.items[leftIndex]?.href;
-    const rightHref = dualMode && leftIndex + 1 < spineLen
+    let rightHref = dualMode && leftIndex + 1 < spineLen
       ? rightBookRef.current.spine.items[leftIndex + 1]?.href
       : undefined;
+
+    // 마지막 페이지가 홀수(왼쪽 단독)로 끝나는 경우 처리: 우측 비우기
+    if (dualMode && leftIndex === spineLen - 1) {
+      rightHref = undefined;
+      try {
+        if (rightViewerRef.current) rightViewerRef.current.innerHTML = "";
+        if (rightRenditionRef.current && typeof rightRenditionRef.current.destroy === "function") {
+          rightRenditionRef.current.destroy();
+          rightRenditionRef.current = null;
+        }
+      } catch {}
+    }
     leftCurrentIndexRef.current = leftIndex;
     rightCurrentIndexRef.current = rightHref ? leftIndex + 1 : null;
     try {
@@ -475,6 +489,10 @@ function App() {
       try { console.log("[display:right] href=", rightHref); } catch {}
       tasks.push(rightRenditionRef.current.display(rightHref));
     }
+    // 우측이 비어야 하는 경우, 오버레이/포인터만 유지하여 클릭 재생만 가능하도록
+    if (!rightHref && dualMode) {
+      ensureClickCatcher(rightViewerRef.current, "right", () => null);
+    }
     // 오버레이 즉시 준비 (rendered 미호출 대비)
     ensureClickCatcher(leftViewerRef.current, "left", () => leftCurrentIndexRef.current ?? leftIndex);
     if (rightHref) {
@@ -604,20 +622,19 @@ function App() {
       {/* 헤더 */}
       <div
         style={{
-          padding: "15px",
-          background: "#2c3e50",
+          padding: "8px 16px",
+          background: "black",
           color: "white",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
+          gap: "16px",
         }}
       >
-        <h1 style={{ margin: 0, fontSize: "24px" }}>
-          {manifest?.title || "Loading..."}
+        <img src={LogoSrc} alt="Logo" style={{ height: "40px"}} />
+        <h1 style={{ margin: 0, fontSize: "18px", color: "white" }}>
+          Kid's English
+          {/* {manifest?.title || "Loading..."} */}
         </h1>
-        <div>
-          Page {currentPage + 1} / {manifest?.pages.length || "?"}
-        </div>
       </div>
 
       {/* EPUB 뷰어: 좌/우 컨테이너 */}
@@ -631,7 +648,7 @@ function App() {
           justifyItems: "center",
           width: "100%",
           height: "100%",
-          background: "#f5f5f5",
+          background: "#E8E8E8",
           overflow: "hidden",
         }}
       >
@@ -669,46 +686,53 @@ function App() {
       {/* 하단 컨트롤 */}
       <div
         style={{
-          padding: "15px",
-          background: "white",
+          padding: "4px",
+          background: "black",
           borderTop: "2px solid #ddd",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          justifyContent: "center",
+          gap: "16px",
         }}
       >
         <button
           onClick={goToPrevPage}
           disabled={currentPage === 0}
           style={{
-            padding: "10px 20px",
+            padding: "4px",
             fontSize: "16px",
             cursor: "pointer",
-            background: "#3498db",
+            background: "transparent",
             color: "white",
             border: "none",
             borderRadius: "5px",
           }}
         >
-          ← Previous
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="24" height="24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          </svg>
         </button>
-
-        <audio ref={audioRef} controls style={{ width: "400px" }} />
-
+        <p style={{ color: "white", fontSize: "16px" }}>
+          {currentPage + 1} / {manifest?.pages.length || "?"}
+        </p>
+        <audio ref={audioRef} controls style={{ display: "none" }} />
         <button
           onClick={goToNextPage}
           disabled={manifest && currentPage === manifest.pages.length - 1}
           style={{
-            padding: "10px 20px",
+            padding: "4px",
             fontSize: "16px",
             cursor: "pointer",
-            background: "#3498db",
+            background: "transparent",
             color: "white",
             border: "none",
             borderRadius: "5px",
           }}
         >
-          Next →
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="24" height="24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+          </svg>
         </button>
       </div>
     </div>
