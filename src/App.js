@@ -6,10 +6,16 @@ function App() {
   const audioRef = useRef(null);
 
   const bookRef = useRef(null);
-  const renditionRef = useRef(null); // ✅ 렌더링 객체 1회만 생성
+  const renditionRef = useRef(null);
 
   const [manifest, setManifest] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
+
+  // ✅ 항상 최신 manifest를 참조하기 위한 ref
+  const manifestRef = useRef(null);
+  useEffect(() => {
+    manifestRef.current = manifest;
+  }, [manifest]);
 
   useEffect(() => {
     const opfUrl =
@@ -27,29 +33,27 @@ function App() {
 
         epubBook.ready.then(() => {
           console.log("Spine length:", epubBook.spine.items.length);
-          loadPage(0); // ✅ 첫 페이지 로드
+          loadPage(0); // 첫 페이지 로드
         });
       });
   }, []);
 
-  // ✅ spine 인덱스 기반으로 페이지 로딩
+  // ✅ spine 인덱스 기반 페이지 로딩
   const loadPage = (index) => {
     if (!bookRef.current) return;
 
     const href = bookRef.current.spine.items[index].href;
 
-    // 렌더링 객체는 1번만 생성
     if (!renditionRef.current) {
       renditionRef.current = bookRef.current.renderTo(viewerRef.current, {
         width: "100%",
         height: "calc(100vh - 150px)",
         flow: "scrolled-doc",
         spread: "none",
-        allowScriptedContent: true
+        allowScriptedContent: true,
       });
 
-      // 렌더링 끝나면 이미지에 이벤트 추가
-      renditionRef.current.on("rendered", () => {
+      renditionRef.current.on("rendered", (section) => {
         const iframe = viewerRef.current.querySelector("iframe");
         if (!iframe) return;
 
@@ -63,30 +67,55 @@ function App() {
           img.style.maxWidth = "100%";
           img.style.maxHeight = "100%";
 
-          img.onclick = () => {
-            console.log("Image clicked on page:", index);
-            playCurrentPageAudio(index);
+          // ✅ 렌더링된 실제 spine index 저장
+          img.dataset.pageIndex = section.index;
+
+          img.onclick = (e) => {
+            const pageIndex = parseInt(e.currentTarget.dataset.pageIndex, 10);
+            console.log("Image clicked on page:", pageIndex);
+
+            if (!manifestRef.current) {
+              console.warn("Manifest not ready yet. Try again.");
+              return;
+            }
+
+            playCurrentPageAudio(pageIndex);
           };
         });
       });
     }
 
-    // 페이지 전환
     renditionRef.current.display(href);
     setCurrentPage(index);
   };
 
   // ✅ 해당 페이지 오디오 실행
   const playCurrentPageAudio = (index) => {
-    if (!manifest || !manifest.pages[index]) {
-      console.warn("No audio for page:", index);
+    const manifestData = manifestRef.current;
+    if (!manifestData || !manifestData.pages) {
+      console.warn("Manifest not loaded");
       return;
     }
-    const page = manifest.pages[index];
+
+    // pageNumber는 1부터 시작 → index + 1 매핑
+    const page = manifestData.pages.find((p) => p.pageNumber === index + 1);
+
+    if (!page) {
+      console.warn("No page found for index:", index);
+      return;
+    }
+
     if (page.audioUrl && audioRef.current) {
       audioRef.current.src = page.audioUrl;
-      audioRef.current.play();
-      console.log("Playing audio:", page.audioUrl);
+      audioRef.current.load(); // ✅ 강제로 리로드
+      audioRef.current
+        .play()
+        .then(() => console.log("Playing audio:", page.audioUrl))
+        .catch((err) =>
+          console.warn("Play failed (probably autoplay blocked):", err)
+        );
+    } else {
+      console.warn("No audio URL for page:", index);
     }
   };
 
@@ -112,7 +141,7 @@ function App() {
           color: "white",
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center"
+          alignItems: "center",
         }}
       >
         <h1 style={{ margin: 0, fontSize: "24px" }}>
@@ -129,7 +158,7 @@ function App() {
         style={{
           width: "100%",
           height: "calc(100vh - 150px)",
-          background: "#f5f5f5"
+          background: "#f5f5f5",
         }}
       ></div>
 
@@ -145,7 +174,7 @@ function App() {
           borderTop: "2px solid #ddd",
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center"
+          alignItems: "center",
         }}
       >
         <button
@@ -158,7 +187,7 @@ function App() {
             background: "#3498db",
             color: "white",
             border: "none",
-            borderRadius: "5px"
+            borderRadius: "5px",
           }}
         >
           ← Previous
@@ -176,7 +205,7 @@ function App() {
             background: "#3498db",
             color: "white",
             border: "none",
-            borderRadius: "5px"
+            borderRadius: "5px",
           }}
         >
           Next →
