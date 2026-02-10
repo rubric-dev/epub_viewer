@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/.pnpm-store
+/.next
 /.pnp
 .pnp.js
 
