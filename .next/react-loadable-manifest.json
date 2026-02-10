@@ -1,0 +1,14 @@
+{
+  "components/EpubViewerClient.js -> ./EpubViewerWithQuiz": {
+    "id": "components/EpubViewerClient.js -> ./EpubViewerWithQuiz",
+    "files": [
+      "static/chunks/_app-pages-browser_components_EpubViewerWithQuiz_js.js"
+    ]
+  },
+  "components/EpubViewerWithQuiz.js -> epubjs": {
+    "id": "components/EpubViewerWithQuiz.js -> epubjs",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_epubjs_src_index_js.js"
+    ]
+  }
+}

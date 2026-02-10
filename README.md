@@ -1,70 +1,61 @@
-# Getting Started with Create React App
+# Kid's English - EPUB Viewer
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+EPUB 전자책 뷰어와 AI 기반 문제풀기 기능을 제공하는 Next.js 앱입니다.
 
-## Available Scripts
+## 기능
 
-In the project directory, you can run:
+- 📖 듀얼/싱글 모드 EPUB 뷰어
+- 🔊 페이지별 오디오 재생
+- 📝 **마지막 페이지 도달 시 문제풀기**: 책 내용을 기반으로 AI가 자동 생성한 5개의 객관식 문제
+- ✅ 퀴즈 채점 및 해설 표시
 
-### `npm start`
+## 시작하기
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 1. 의존성 설치
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```bash
+npm install
+# 또는
+pnpm install
+```
 
-### `npm test`
+### 2. OpenAI API 키 설정 (문제 생성용)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+`.env.local` 파일을 생성하고 OpenAI API 키를 추가하세요:
 
-### `npm run build`
+```
+OPENAI_API_KEY=sk-your-openai-api-key-here
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+`.env.example` 파일을 참고할 수 있습니다.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 3. 개발 서버 실행
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm run dev
+# 또는
+pnpm dev
+```
 
-### `npm run eject`
+[http://localhost:3000](http://localhost:3000)에서 앱을 확인할 수 있습니다.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### 4. 빌드 및 배포
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm run build
+npm start
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 사용 방법
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+1. 책을 읽으며 마지막 페이지까지 넘겨 주세요.
+2. 마지막 페이지에 도달하면 하단에 **「문제 풀기」** 버튼이 나타납니다.
+3. 버튼을 누르면 AI가 책 내용을 분석해 5개의 객관식 문제를 생성합니다.
+4. 문제를 풀고 **제출하기**를 누르면 정답 여부와 해설을 확인할 수 있습니다.
 
-## Learn More
+## 기술 스택
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Next.js 14 (App Router)
+- React 19
+- epub.js (EPUB 렌더링)
+- OpenAI GPT-4o-mini (문제 생성)
